@@ -34,15 +34,12 @@ STATIC_INIT_LATE(mod_cvars_override)
 {
 	localcmd("\nset hud_panel_quickmenu_file quickmenu.txt\n");
 
-	localcmd("\nalias ignore \"cmd ignore ${* ?}\"\n");
-	localcmd("\nalias unignore \"cmd unignore ${* ?}\"\n");
-	localcmd("\nalias unignore_all \"cmd clear_ignores ${* ?}\"\n");
-
 	localcmd("\nalias itemlist \"cl_cmd itemlist ${* ?}\"\n");
 	localcmd("\nalias bufflist \"cl_cmd bufflist ${* ?}\"\n");
 	localcmd("\nalias place_item \"cmd placeitem spawn ${* ?}\"\n");
 	localcmd("\nalias itemplacer \"cmd placeitem ${* ?}\"\n");
 	localcmd("\nalias placeitems \"cl_cmd placeitems ${* ?}\"\n");
+	localcmd("\nalias propedit \"cl_cmd propedit ${* ?}\"\n");
 	localcmd("\nalias oregon \"cl_cmd oregon ${* ?}\"\n");
 
 	localcmd("\nalias findmap \"cmd findmap ${* ?}\"\n");
@@ -83,7 +80,7 @@ MUTATOR_HOOKFUNCTION(mutator_mod, CSQC_ConsoleCommand)
 	if(cmd_name == "bufflist")
 	{
 		LOG_INFO("Buffs:");
-		FOREACH(StatusEffect, it.instanceOfBuff,
+		FOREACH(StatusEffects, it.instanceOfBuff,
 		{
 			LOG_INFO("    ", it.netname, " (", BUFF_NAME(it.m_id), "^7)");
 		});
@@ -93,6 +90,12 @@ MUTATOR_HOOKFUNCTION(mutator_mod, CSQC_ConsoleCommand)
 	if(cmd_name == "placeitems")
 	{
 		localcmd("\ncl_cmd hud quickmenu file \"\" placeitems.txt\n");
+		return true;
+	}
+
+	if(cmd_name == "propedit")
+	{
+		localcmd("\ncl_cmd hud quickmenu file \"\" props.txt\n");
 		return true;
 	}
 

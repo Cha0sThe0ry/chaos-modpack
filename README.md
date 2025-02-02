@@ -2,9 +2,10 @@ SMB modpack
 ===========
 
 QuakeC source for the SMB server mods
-
+<!---
 [![Build Status](https://travis-ci.org/MarioSMB/modpack.svg?branch=master)](https://travis-ci.org/MarioSMB/modpack)
-
+!-->
+[![Build Status](https://img.shields.io/github/actions/workflow/status/MarioSMB/modpack/build.yml)](https://github.com/MarioSMB/modpack/actions)
 
 Requirements
 ============
@@ -21,13 +22,13 @@ Building tools
  - Mac systems should already come with the required building tools once Git is installed
  
 Required content packs:
- - http://dl.xonotic.fps.gratis/zzz-misc-v006-110-ge06fbb8.pk3
- - http://dl.xonotic.fps.gratis/zzz-quickmenu_029.pk3
- - http://dl.xonotic.fps.gratis/zzz-minigames-v006-114-ga3a4a87.pk3
+ - https://dl.xonotic.fps.gratis/zzz-misc-v006-122-g0a722ad.pk3
+ - https://dl.xonotic.fps.gratis/zzz-quickmenu_029.pk3
+ - https://dl.xonotic.fps.gratis/zzz-minigames-v006-114-ga3a4a87.pk3
 
 Optional content packs:
- - http://dl.xonotic.fps.gratis/zzz-mod-extra-v006-62-g9667a44.pk3
- - http://dl.xonotic.fps.gratis/zzz-mod-weapons-v006-70-g7e65c20.pk3
+ - https://dl.xonotic.fps.gratis/zzz-mod-extra-v006-62-g9667a44.pk3
+ - https://dl.xonotic.fps.gratis/zzz-mod-weapons-v006-107-g5176c47.pk3
 
 
 Usage
@@ -43,7 +44,8 @@ Note: PATH is one of the following depending on your system
 Nothing should *ever* be added to the main installation folder of Xonotic, use these paths!
 
 1. Run this from a terminal in the modpack folder: `./update.sh`
-2. Run this from a terminal in the modpack folder: `./build.sh`
+2. Run this from a terminal in the modpack folder: `./build.sh` <br/>
+For speed up compilation, if you want to execute without compression (without `csprogs-*.pk3` file): `ZIP=: ./build.sh`
 3. Copy the compiled .dat files from modpack to `PATH/data`
 4. Download the content packs to `PATH/data` and make sure they're available on your map download server
 

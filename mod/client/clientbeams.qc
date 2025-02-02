@@ -1,9 +1,7 @@
 //FEATURE: Client-side vaporizer and vortex beams, greatly easing the pain of high ping
 
-//bool autocvar_cl_particles_newvortexbeam;
 AUTOCVAR_SAVE(cl_vaporizerbeam,                    int,   0,      "Draw a client side beam when firing in instagib. -1: always disabled, 0: disabled unless ping is high, 1: enabled");
 AUTOCVAR_SAVE(cl_vaporizerbeam_minping,            int,   160,    "Minimum ping for the client side beams to automatically enable");
-AUTOCVAR_SAVE(cl_particles_newvortexbeam,          bool,  false,  "Draw a fancy new vortex beam");
 
 .float last_beam;
 
@@ -97,8 +95,10 @@ void ClientBeam_Draw(entity this)
 	string tex = "particles/lgbeam";
 	if(this.cnt)
 		tex = "particles/gauntletbeam";
-	//vector rgb = getcsqcplayercolor(this.sv_entnum - 1);
-	vector rgb = colormapPaletteColor(entcs_GetClientColors(this.sv_entnum - 1) & 0x0F, true);
+	vector rgb = WEP_VAPORIZER.m_color;
+	if(autocvar_cl_vaporizerbeam_teamcolor)
+		rgb = colormapPaletteColor(entcs_GetClientColors(this.sv_entnum - 1) & 0x0F, true);
+
 	rgb *= (1 + autocvar_cl_vaporizerbeam_colorboost);
 
 	float fail = (this.nextthink - time);
@@ -109,12 +109,6 @@ void ClientBeam_Draw(entity this)
 	Draw_ClientBeam_trace_callback_a = bound(0, fail, 1);
 	WarpZone_TraceBox_ThroughZone(this.vorg1, '0 0 0', '0 0 0', this.vorg2, MOVE_NOTHING, NULL, NULL, Draw_ClientBeam_trace_callback);
 	Draw_ClientBeam_trace_callback_tex = string_null;
-
-	/*if(!MUTATOR_CALLHOOK(Particles_ClientBeam, this.vorg1, this.vorg2))
-	if(autocvar_cl_particles_oldvortexbeam && (getstati(STAT_ALLOW_OLDVORTEXBEAM) || isdemo()))
-		WarpZone_TrailParticles_WithMultiplier(NULL, particleeffectnum(EFFECT_VORTEX_BEAM_OLD), this.vorg1, this.vorg2, 1, PARTICLES_USEALPHA | PARTICLES_USEFADE);
-	else
-		WarpZone_TrailParticles_WithMultiplier(NULL, particleeffectnum(EFFECT_VORTEX_BEAM), this.vorg1, this.vorg2, 1, PARTICLES_USEALPHA | PARTICLES_USEFADE);*/
 }
 
 void FireClientBeam(vector start, vector end, bool hit)
@@ -136,7 +130,13 @@ void FireClientBeam(vector start, vector end, bool hit)
 
 	if(autocvar_cl_vaporizerbeam_particle)
 	{
-		WarpZone_TrailParticles(NULL, particleeffectnum(((e.cnt) ? EFFECT_VAPORIZER_HIT(e.team) : EFFECT_VAPORIZER(e.team))), e.vorg1, e.vorg2);
+		vector rgb = WEP_VAPORIZER.m_color;
+		if(autocvar_cl_vaporizerbeam_teamcolor)
+			rgb = colormapPaletteColor(entcs_GetClientColors(e.sv_entnum - 1) & 0x0F, true);
+
+		particles_colormin = particles_colormax = rgb;
+		WarpZone_TrailParticles_WithMultiplier(NULL, particleeffectnum(((e.cnt) ? EFFECT_VAPORIZER_BEAM_HIT : EFFECT_VAPORIZER_BEAM)), e.vorg1, e.vorg2, 1, PARTICLES_USECOLOR);
+
 		e.draw = func_null;
 		e.drawmask = MASK_NORMAL;
 		delete(e);
@@ -234,7 +234,7 @@ void DrawClientBeam(entity wep, float vordelay, float vapedelay, bool held, enti
 	if(wep.activeweapon != WEP_VAPORIZER && wep.activeweapon != WEP_VORTEX && wep.activeweapon != WEP_OVERKILL_NEX)
 		return;
 	if(!held)
-	//if(held)// || (wep.activeweapon == WEP_VORTEX && WEP_CVAR(vortex, secondary) && attack2_held && !WEP_CVAR(vortex, charge)))
+	//if(held)// || (wep.activeweapon == WEP_VORTEX && WEP_CVAR(WEP_VORTEX, secondary) && attack2_held && !WEP_CVAR(WEP_VORTEX, charge)))
 		return;
 	if(!(autocvar_cl_vaporizerbeam > 0 || (player.ping >= autocvar_cl_vaporizerbeam_minping && autocvar_cl_vaporizerbeam != -1)))
 		return;
@@ -257,29 +257,45 @@ void DrawClientBeam(entity wep, float vordelay, float vapedelay, bool held, enti
 	//v_right = view_right;
 	//v_up = view_up;
 
-	float vaporizer_damage = ((WEP_CVAR_PRI(vaporizer, damage) > 0) ? WEP_CVAR_PRI(vaporizer, damage) : 10000);
-	float hit_damage = ((is_vortex) ? WEP_CVAR_PRI(vortex, damage) : vaporizer_damage);
-	float hit_force = ((is_vortex) ? WEP_CVAR_PRI(vortex, force) : 800);
+	float vaporizer_damage = ((WEP_CVAR_PRI(WEP_VAPORIZER, damage) > 0) ? WEP_CVAR_PRI(WEP_VAPORIZER, damage) : 10000);
+	float hit_damage = ((is_vortex) ? WEP_CVAR_PRI(WEP_VORTEX, damage) : vaporizer_damage);
+	float hit_force = ((is_vortex) ? WEP_CVAR_PRI(WEP_VORTEX, force) : 800);
 
 	int shottype = W_SetupShot_Dir_ProjectileSize_Range(rlplayer, wep, forward, '0 0 0', '0 0 0', false, 0, SND_Null, CH_WEAPON_A, 0, max_shot_distance);
 	FireRailgunBullet(rlplayer, wep, w_shotorg, w_shotorg + w_shotdir * max_shot_distance, hit_damage, hit_force, 0, 0, 0, 0, wep.activeweapon.m_id);
 	vector shot_endpos = trace_endpos;
 
 	bool hit = boolean(shottype == SHOTTYPE_HITENEMY || shottype == SHOTTYPE_HITTEAM); // also count team shots
+	int eff_flags = PARTICLES_USEALPHA | PARTICLES_USEFADE;
 
-	int eff = particleeffectnum((hit ? EFFECT_VAPORIZER_HIT(myteam) : EFFECT_VAPORIZER(myteam)));
 	if(is_vortex)
 	{
-		if(autocvar_cl_particles_oldvortexbeam)
-		{ /* keep insta beam */ }
-		else if(autocvar_cl_particles_newvortexbeam && particleeffectnum(EFFECT_VORTEX_BEAM_NEW) >= 0)
-			eff = particleeffectnum(EFFECT_VORTEX_BEAM_NEW);
-		else
-			eff = particleeffectnum(EFFECT_VORTEX_BEAM);
-	}
+		float charge = 1;
+		float myowner = player_localentnum;
+		if(WEP_CVAR(WEP_VORTEX, charge))
+		{
+			float mydmg = hit_damage;
+			charge = WEP_CVAR(WEP_VORTEX, charge_mindmg) / mydmg + (1 - WEP_CVAR(WEP_VORTEX, charge_mindmg) / mydmg) * wep.vortex_charge;
+		}
 
-	if(is_vortex)
-		WarpZone_TrailParticles(player, eff, w_shotorg, WarpZone_UnTransformOrigin(WarpZone_trace_transform, trace_endpos));
+		charge = sqrt(charge); // divide evenly among trail spacing and alpha
+		particles_alphamin = particles_alphamax = particles_fade = charge;
+		if((teamplay && autocvar_cl_tracers_teamcolor == 1) || autocvar_cl_tracers_teamcolor == 2)
+		{
+			float mycolors = entcs_GetClientColors(myowner - 1);
+			vector rgb = vortex_glowcolor(mycolors, max(0.25, charge));
+			// in the event of charging being turned off, fall back to player colours
+			if(rgb == '0 0 0')
+				rgb = colormapPaletteColor(mycolors & 0x0F, true);
+			particles_colormin = particles_colormax = rgb;
+			eff_flags |= PARTICLES_USECOLOR;
+		}
+
+		if(autocvar_cl_particles_oldvortexbeam)
+			WarpZone_TrailParticles_WithMultiplier(NULL, particleeffectnum(EFFECT_VORTEX_BEAM_OLD), w_shotorg, WarpZone_UnTransformOrigin(WarpZone_trace_transform, trace_endpos), 1, eff_flags);
+		else
+			WarpZone_TrailParticles_WithMultiplier(NULL, particleeffectnum(EFFECT_VORTEX_BEAM), w_shotorg, WarpZone_UnTransformOrigin(WarpZone_trace_transform, trace_endpos), 1, eff_flags);
+	}
 	else if(wep.activeweapon == WEP_VAPORIZER)
 		FireClientBeam(w_shotorg, WarpZone_UnTransformOrigin(WarpZone_trace_transform, trace_endpos), hit);
 
@@ -291,10 +307,7 @@ void DrawClientBeam(entity wep, float vordelay, float vapedelay, bool held, enti
 		traceline(shot_endpos - normalize(force) * 16, shot_endpos + normalize(force) * 16, MOVE_NOMONSTERS, NULL);
 		w_backoff = -1 * normalize(force);
 		vector org2 = shot_endpos + w_backoff * 6;
-		if(autocvar_cl_particles_newvortexbeam && is_vortex)
-			pointparticles(EFFECT_VORTEX_IMPACT_NEW, org2, '0 0 0', 1);
-		else
-			pointparticles(EFFECT_VORTEX_IMPACT, org2, '0 0 0', 1);
+		pointparticles(EFFECT_VORTEX_IMPACT, org2, '0 0 0', 1);
 	}
 
 	if(wep.activeweapon == WEP_VAPORIZER)
@@ -302,7 +315,7 @@ void DrawClientBeam(entity wep, float vordelay, float vapedelay, bool held, enti
 	else if(is_vortex && (input_buttons & 1))
 	{
 		wep.last_beam = time + vordelay;
-		//else if(WEP_CVAR(vortex, secondary) && attack2_held)
+		//else if(WEP_CVAR(WEP_VORTEX, secondary) && attack2_held)
 			//wep.last_beam = time + vortex_sdelay;
 	}
 }
@@ -316,10 +329,10 @@ MUTATOR_HOOKFUNCTION(mutator_mod, DrawCrosshair)
 	|| (spectatee_status)
 	) { return false; }
 
-	float vaporizer_delay = WEP_CVAR_PRI(vaporizer, refire);
-	float vortex_pdelay = WEP_CVAR_PRI(vortex, refire);
-	float oknex_delay = WEP_CVAR_PRI(oknex, refire);
-	//float vortex_sdelay = WEP_CVAR_SEC(vortex, refire);
+	float vaporizer_delay = WEP_CVAR_PRI(WEP_VAPORIZER, refire);
+	float vortex_pdelay = WEP_CVAR_PRI(WEP_VORTEX, refire);
+	float oknex_delay = WEP_CVAR_PRI(WEP_OVERKILL_NEX, refire);
+	//float vortex_sdelay = WEP_CVAR_SEC(WEP_VORTEX, refire);
 	//float vortex_charge = STAT(VORTEX_CHARGE);
 
 	bool attack1_held = (input_buttons & BIT(0));
@@ -338,31 +351,6 @@ MUTATOR_HOOKFUNCTION(mutator_mod, DrawCrosshair)
 		if(time < wep.last_beam)
 			continue;
 		DrawClientBeam(wep, ((wep.activeweapon == WEP_OVERKILL_NEX) ? oknex_delay : vortex_pdelay), vaporizer_delay, attack1_held, localme);
-	}
-
-	return false;
-}
-
-MUTATOR_HOOKFUNCTION(mutator_mod, Weapon_ImpactEffect)
-{
-	if(autocvar_cl_particles_newvortexbeam && (M_ARGV(0, entity) == WEP_VORTEX || M_ARGV(0, entity) == WEP_OVERKILL_NEX))
-	{
-		vector org2 = w_org + w_backoff * 6;
-		pointparticles(EFFECT_VORTEX_IMPACT_NEW, org2, '0 0 0', 1);
-		if(!w_issilent)
-			sound(M_ARGV(1, entity), CH_SHOTS, SND_NEXIMPACT, VOL_BASE, ATTN_NORM);
-		return true;
-	}
-
-	return false;
-}
-
-MUTATOR_HOOKFUNCTION(mutator_mod, Particles_VortexBeam)
-{
-	if(autocvar_cl_particles_newvortexbeam && particleeffectnum(EFFECT_VORTEX_BEAM_NEW) >= 0)
-	{
-		WarpZone_TrailParticles_WithMultiplier(NULL, particleeffectnum(EFFECT_VORTEX_BEAM_NEW), M_ARGV(0, vector), M_ARGV(1, vector), 1, PARTICLES_USEALPHA | PARTICLES_USEFADE);
-		return true;
 	}
 
 	return false;
