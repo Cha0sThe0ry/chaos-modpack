@@ -180,6 +180,19 @@ MUTATOR_HOOKFUNCTION(piggyback, MatchEnd)
 	return false;
 }
 
+bool piggyback_FindPlayer_cond(entity e)
+{
+#define LIMBO(v) (IS_DEAD(v) || STAT(FROZEN, v) || StatusEffects_active(STATUSEFFECT_Frozen, v))
+
+	return (e != WarpZone_SearchInRadius_otherent && !IS_DEAD(e) && !CS_CVAR(e).cvar_cl_nocarry && !e.vehicle
+		&& (IS_PLAYER(e) || (IS_MONSTER(e) && (e.monsterdef.spawnflags & MON_FLAG_RIDE)))
+		&& (SAME_TEAM(e, WarpZone_SearchInRadius_otherent) || autocvar_g_piggyback_ride_enemies || (IS_MONSTER(e) && e.realowner == WarpZone_SearchInRadius_otherent))
+		&& ((!LIMBO(e) && !LIMBO(WarpZone_SearchInRadius_otherent)) || (LIMBO(e) || LIMBO(WarpZone_SearchInRadius_otherent)))
+		);
+
+#undef LIMBO
+}
+
 MUTATOR_HOOKFUNCTION(piggyback, PlayerUseKey)
 {
 	if(MUTATOR_RETURNVALUE || game_stopped) { return; }
@@ -201,41 +214,26 @@ MUTATOR_HOOKFUNCTION(piggyback, PlayerUseKey)
 	if(!autocvar_g_piggyback)
 		return;
 
-#define LIMBO(v) (IS_DEAD(v) || STAT(FROZEN, v) || StatusEffects_active(STATUSEFFECT_Frozen, v))
-
 	if(!CS_CVAR(player).cvar_cl_noride)
 	if(!player.vehicle && !IS_DEAD(player) && !STAT(FROZEN, player) && !StatusEffects_active(STATUSEFFECT_Frozen, player))
 	{
-		entity head, closest_target = NULL;
+		entity closest_target = NULL;
 
-		head = WarpZone_FindRadius(player.origin, autocvar_g_vehicles_enter_radius, true);
-		while(head)
+		WarpZone_SearchInRadius_otherent = player;
+		for (entity head = WarpZone_SearchInRadius(player.origin, autocvar_g_vehicles_enter_radius, MOVE_NOTHING, piggyback_FindPlayer_cond); head; head = head.chain)
 		{
-			if(IS_PLAYER(head) || (IS_MONSTER(head) && (head.monsterdef.spawnflags & MON_FLAG_RIDE)))
-			if(SAME_TEAM(head, player) || autocvar_g_piggyback_ride_enemies || (IS_MONSTER(head) && head.realowner == player))
-			if(head != player)
-			if(!CS_CVAR(head).cvar_cl_nocarry)
-			if(!IS_DEAD(head)) // we check for trapped status here, but better to be safe than sorry, considering the madness happening
-			if(!head.vehicle)
-			if((!LIMBO(head) && !LIMBO(player)) || (LIMBO(head) || LIMBO(player))) // your guess is as good as mine
+			if(closest_target)
 			{
-				if(closest_target)
-				{
-					if(vlen2(player.origin - head.origin) < vlen2(player.origin - closest_target.origin))
-					{ closest_target = head; }
-				}
-				else { closest_target = head; }
+				if(vlen2(player.origin - head.origin) < vlen2(player.origin - closest_target.origin))
+				{ closest_target = head; }
 			}
-			
-			head = head.chain;
+			else { closest_target = head; }
 		}
 
 		if(closest_target)
 		if(IS_BOT_CLIENT(closest_target)) { pb_Attach(player, closest_target); return true; }
 		else { pb_Attach(closest_target, player); return true; }
 	}
-
-#undef LIMBO
 }
 
 MUTATOR_HOOKFUNCTION(piggyback, PlayerPreThink)
