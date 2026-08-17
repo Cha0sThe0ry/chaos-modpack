@@ -1,11 +1,5 @@
 //FEATURE: Dynamic Spawnshield mutator, copied from The Regulars, adjusts spawn shield length to benefit those getting spawnkilled
 
-#ifdef GAMEQC
-// how many times player spawnkilled someone
-REGISTER_SP(SPWN_KILLS);
-// how many times player has been spawnkilled
-REGISTER_SP(SPWN_KILLED);
-#endif
 
 #ifdef SVQC
 AUTOCVAR(g_spawnshielddynamic, float, 0, "enable Dynamic Spawnshield mutator, set to 0.6 for a sensible value");
@@ -13,17 +7,6 @@ AUTOCVAR(sv_spawnkill_time, float, 1.6, "time after spawn which considers to be 
 
 REGISTER_MUTATOR(dynamic_spawnshield, autocvar_g_spawnshielddynamic > 0);
 
-.int spawnkilled_series;
-.int spawnkill_series;
-
-ACCUMULATE void ScoreRules_basics(int teams, float sprio, float stprio, float score_enabled)
-{
-	if(autocvar_g_spawnshielddynamic > 0 && !INDEPENDENT_PLAYERS)
-	{
-		ScoreInfo_SetLabel_PlayerScore(SP_SPWN_KILLS, "spawnkills", 0);
-		ScoreInfo_SetLabel_PlayerScore(SP_SPWN_KILLED, "spawnkilled", 0);
-	}
-}
 
 float CalculateSpawnShield(entity this)
 {
