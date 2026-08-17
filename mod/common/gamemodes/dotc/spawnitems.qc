@@ -28,7 +28,7 @@ void dotc_ItemSpawn_Give(entity player)
 	});
 
 	if(player.items & ITEM_Jetpack.m_itemid)
-		SetResource(player, RES_FUEL, max(GetResource(player, RES_FUEL), g_pickup_fuel_jetpack));
+		SetResource(player, RES_FUEL, max(GetResource(player, RES_FUEL), autocvar_g_pickup_fuel_jetpack));
 
 	FOREACH(Weapons, it != WEP_Null && (STAT(WEAPONS, player) & it.m_wepset),
 	{

@@ -3,6 +3,20 @@
 #include "polytrails.qh"
 #include "polytrails_weapons.qh"
 
+vector polytrail_noise_swirl(vector from, vector to, float csize)
+{
+    vector dir = normalize(from - to);
+
+    vector _forward, right, up;
+    VECTOR_VECTORS(dir, _forward, right, up);
+
+    float angle_step = 2 * csize * M_PI * time;
+
+    vector out = right * cos(angle_step) * csize + up * sin(angle_step) * csize;
+
+    return out;
+}
+
 #define POLYTRAIL_SEEK(_p, _rel) ((POLYTRAIL_BUFSIZE + (_p).polytrail_bufidx + (_rel)) % POLYTRAIL_BUFSIZE)
 void Trail_draw(entity this)
 {
@@ -32,6 +46,7 @@ void Trail_draw(entity this)
                 default:
                 case "none": this.polytrail_bufnoise[i] = '0 0 0'; break;
                 case "chaotic": this.polytrail_bufnoise[i] = randompos(f * '-1 -1 -1', f * '1 1 1'); break;
+                case "swirl": this.polytrail_bufnoise[i] = polytrail_noise_swirl(this.polytrail_bufpos[this.polytrail_bufidx], this.polytrail_bufpos[i], f); break;
             }
             this.polytrail_buftime[i] = time;
             this.polytrail_bufidx = i;
@@ -75,6 +90,7 @@ void Trail_recreate(entity this)
     PolyTrail t = NEW(PolyTrail);
     t.polytrail_follow = this.polytrail_follow;
     IL_PUSH(g_drawables, t);
+    t.polytrail_teamcolor = this.polytrail_teamcolor;
     t.polytrail_tex = this.polytrail_tex;
     t.polytrail_head_alpha = this.polytrail_head_alpha;
     t.polytrail_head_color = this.polytrail_head_color;
@@ -98,7 +114,7 @@ void PolyTrail_Spawn(entity this, entity _follow)
     this.polytrail_follow = _follow;
     IL_PUSH(g_drawables, this);
 
-    if(autocvar_cl_polytrails_teamcolor && _follow.colormap > 0)
+    if((autocvar_cl_polytrails_teamcolor || this.polytrail_teamcolor) && _follow.colormap > 0)
     {
         vector teamcolor = colormapPaletteColor(_follow.colormap & 0x0F, true);
         // keep original head color so it matches projectile
@@ -114,8 +130,17 @@ MUTATOR_HOOKFUNCTION(polytrails, EditProjectile) {
     if (!autocvar_cl_polytrails) return;
     entity proj = M_ARGV(0, entity);
     
-    switch(proj.cnt)
+    switch(proj.csqcprojectile_type)
     {
+        case PROJECTILE_BLASTER:
+            if(autocvar_cl_polytrails_blaster_bolt)
+            {
+                setmodel(proj, MDL_Null);
+                proj.mins = '0 0 0';
+                proj.maxs = '0 0 0';
+                PolyTrail_Spawn(NEW(BlasterBoltTrail), proj);
+            }
+            break;
         case PROJECTILE_ELECTRO:
             if(autocvar_cl_polytrails_electro_orb)
             {

@@ -2,9 +2,44 @@
 
 REGISTER_MUTATOR(cl_ph, true);
 
+void HUD_HunterEyes()
+{
+	vector screenVector = vec2(vid_conwidth, vid_conheight);
+	drawfill('0 0 0', screenVector, '0.01 0.01 0.01', 1, DRAWFLAG_NORMAL);
+
+	draw_beginBoldFont();
+	vector pos = screenVector * 0.5;
+	string s = _("Round will start soon, no peeking!");
+	pos.x -= stringwidth_colors(s, hud_fontsize) * 0.5;
+	drawstring(pos, s, hud_fontsize, '1 1 1', 1, DRAWFLAG_NORMAL);
+	draw_endBoldFont();
+}
+
+float autocvar_r_showbboxes_client;
+MUTATOR_HOOKFUNCTION(cl_ph, HUD_Draw_overlay)
+{
+	if(!ISGAMETYPE(PROPHUNT))
+		return false;
+
+	bool inround = (STAT(ROUNDSTARTTIME) != -1 && time < STAT(ROUNDSTARTTIME));
+
+	if(myteam != NUM_SPECTATOR && (myteam + 1) != STAT(PROPHUNT_PROPTEAM) && !warmup_stage && inround)
+		HUD_HunterEyes();
+}
+
 MUTATOR_HOOKFUNCTION(cl_ph, DrawInfoMessages)
 {
 	return (ISGAMETYPE(PROPHUNT) && entcs_GetSpecState(player_localnum) == ENTCS_SPEC_IN_SCOREBOARD);
+}
+
+MUTATOR_HOOKFUNCTION(cl_ph, HUD_Radar_show)
+{
+	if(!ISGAMETYPE(PROPHUNT))
+		return false;
+
+	bool inround = (STAT(ROUNDSTARTTIME) != -1 && time < STAT(ROUNDSTARTTIME));
+
+	return (myteam != NUM_SPECTATOR && (myteam + 1) != STAT(PROPHUNT_PROPTEAM) && !warmup_stage && inround);
 }
 
 MUTATOR_HOOKFUNCTION(cl_ph, ForcePlayercolors_Skip)
@@ -99,6 +134,16 @@ MUTATOR_HOOKFUNCTION(cl_ph, WantEventchase)
 	return (player.team == STAT(PROPHUNT_PROPTEAM));
 }
 
+MUTATOR_HOOKFUNCTION(cl_ph, DrawWorld)
+{
+	if(!ISGAMETYPE(PROPHUNT))
+		return false;
+
+	// TODO: attach clients to non-player objects so no client logic is run on them
+	if(autocvar_r_showbboxes_client != 0)
+		cvar_set("r_showbboxes_client", "0");
+}
+
 void HUD_Mod_PH_Draw(vector myPos, vector mySize, int layout)
 {
 	int rows, columns;
@@ -128,8 +173,11 @@ void HUD_Mod_PH_Draw(vector myPos, vector mySize, int layout)
 }
 
 // Prop Hunt HUD modicons
-void HUD_Mod_PH(vector myPos, vector mySize)
+void HUD_Mod_PH(vector myPos, vector mySize, bool should_draw)
 {
+	if (!should_draw)
+		return;
+
 	mod_active = 1; // required in each mod function that always shows something
 
 	HUD_Mod_PH_Draw(myPos, mySize, autocvar_hud_panel_modicons_ca_layout);

@@ -1,4 +1,7 @@
 [submodule "xonotic"]
 	path = xonotic
 	url = https://github.com/Cha0sThe0ry/chaos-xonotic-data.pk3dir.git
-	branch = ct-dev
+	branch = dev-chaos
+[submodule "gmqcc"]
+	path = gmqcc
+	url = https://gitlab.com/xonotic/gmqcc.git

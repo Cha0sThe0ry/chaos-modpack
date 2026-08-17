@@ -6,7 +6,7 @@
 void PH_count_alive_players()
 {
 	total_players = 0;
-	for (int i = 1; i <= NUM_TEAMS; ++i)
+	for (int i = 1; i <= AVAILABLE_TEAMS; ++i)
 	{
 		Team_SetNumberOfAlivePlayers(Team_GetTeamFromIndex(i), 0);
 	}
@@ -120,34 +120,21 @@ bool PH_CheckTeams()
 	static int prev_missing_teams_mask;
 	allowed_to_spawn = true;
 	PH_count_alive_players();
-	if (Team_GetNumberOfAliveTeams() == 2)
-	{
-		if(prev_missing_teams_mask > 0)
-			Kill_Notification(NOTIF_ALL, NULL, MSG_CENTER, CPID_MISSING_TEAMS);
-		prev_missing_teams_mask = -1;
+	missing_teams_mask = 0;
+	if (Team_GetNumberOfAliveTeams() == AVAILABLE_TEAMS)
 		return true;
-	}
 	if(total_players == 0)
-	{
-		if(prev_missing_teams_mask > 0)
-			Kill_Notification(NOTIF_ALL, NULL, MSG_CENTER, CPID_MISSING_TEAMS);
-		prev_missing_teams_mask = -1;
 		return false;
-	}
-	int missing_teams_mask = 0;
-	for (int i = 1; i <= NUM_TEAMS; ++i)
+	for (int i = 1; i <= AVAILABLE_TEAMS; ++i)
 	{
-		if (IsTeamAvailable(Team_IndexToTeam(i)) &&
+		if ((teamplay_bitmask & Team_IndexToBit(i)) &&
 			(Team_GetNumberOfAlivePlayers(Team_GetTeamFromIndex(i)) == 0))
 		{
 			missing_teams_mask |= Team_IndexToBit(i);
 		}
 	}
 	if(prev_missing_teams_mask != missing_teams_mask)
-	{
-		Send_Notification(NOTIF_ALL, NULL, MSG_CENTER, CENTER_MISSING_TEAMS, missing_teams_mask);
 		prev_missing_teams_mask = missing_teams_mask;
-	}
 	return false;
 }
 
@@ -277,6 +264,13 @@ MUTATOR_HOOKFUNCTION(ph, PlayerPowerups)
 		player.effects &= ~EF_FULLBRIGHT; // ignore fullbrightplayers setting
 }
 
+MUTATOR_HOOKFUNCTION(ph, Player_Sound)
+{
+	entity player = M_ARGV(0, entity);
+	int voicetype = M_ARGV(1, int);
+	return (player.team == prophunt_propteam && voicetype != VOICETYPE_TAUNT);
+}
+
 MUTATOR_HOOKFUNCTION(ph, ShowChatBubble)
 {
 	entity player = M_ARGV(0, entity);
@@ -290,7 +284,7 @@ MUTATOR_HOOKFUNCTION(ph, PlayerPreThink)
 		return;
 	}
 	entity player = M_ARGV(0, entity);
-	if (!IS_PLAYER(player) || IS_DEAD(player) || STAT(FROZEN, player))
+	if (!IS_PLAYER(player) || IS_DEAD(player))
 	{
 		return;
 	}
@@ -346,7 +340,7 @@ MUTATOR_HOOKFUNCTION(ph, PlayerPreThink)
 			}
 		}
 		if(!found)
-			PlayerSound(player, playersound_taunt, CH_VOICE, VOL_BASEVOICE, VOICETYPE_TAUNT);
+			PlayerSound(player, playersound_taunt, CH_VOICE, VOL_BASEVOICE, VOICETYPE_TAUNT, 1);
 		player.prophunt_lasttaunt = time + max(1, autocvar_g_prophunt_prop_taunt_delay) + max(0, random() * autocvar_g_prophunt_prop_taunt_delay_random);
 	}
 

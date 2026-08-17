@@ -73,7 +73,6 @@ void vip_ClearVIPs()
 		vip_count[j] = 0;
 }
 
-#define VIP_TEAMS_OK() (Team_GetNumberOfAliveTeams() == NumTeams(vip_teams))
 #define VIP_COUNT() ((vip_count[0] > 0) + (vip_count[1] > 0) + (vip_count[2] > 0) + (vip_count[3] > 0))
 
 int VIP_GetWinnerTeam()
@@ -207,6 +206,7 @@ bool VIP_CheckTeams()
 	pc = ((pinkgem_count) ? pinkgem_count : 1);
 	allowed_to_spawn = true;
 	VIP_count_players();
+	missing_teams_mask = 0;
 	if(vip_count[0] < rc || vip_count[1] < bc || (NumTeams(vip_teams) >= 3 && vip_count[2] < yc) || (NumTeams(vip_teams) >= 4 && vip_count[3] < pc))
 	{
 		if(!g_vip_soulgems || redgem_count < 1 || bluegem_count < 1 || (NumTeams(vip_teams) >= 3 && yellowgem_count < 1) || (NumTeams(vip_teams) >= 4 && pinkgem_count < 1))
@@ -222,21 +222,10 @@ bool VIP_CheckTeams()
 		});
 		return false;
 	}
-	if(VIP_TEAMS_OK())
-	{
-		if(prev_missing_teams_mask > 0)
-			Kill_Notification(NOTIF_ALL, NULL, MSG_CENTER, CPID_MISSING_TEAMS);
-		prev_missing_teams_mask = -1;
+	if(Team_GetNumberOfAliveTeams() == NumTeams(vip_teams))
 		return true;
-	}
 	if(total_players == 0)
-	{
-		if(prev_missing_teams_mask > 0)
-			Kill_Notification(NOTIF_ALL, NULL, MSG_CENTER, CPID_MISSING_TEAMS);
-		prev_missing_teams_mask = -1;
 		return false;
-	}
-	int missing_teams_mask = 0;
 	for (int i = 1; i <= NUM_TEAMS; ++i)
 	{
 		if ((vip_teams & Team_IndexToBit(i)) &&
@@ -246,10 +235,7 @@ bool VIP_CheckTeams()
 		}
 	}
 	if(prev_missing_teams_mask != missing_teams_mask)
-	{
-		Send_Notification(NOTIF_ALL, NULL, MSG_CENTER, CENTER_MISSING_TEAMS, missing_teams_mask);
 		prev_missing_teams_mask = missing_teams_mask;
-	}
 	return false;
 }
 
@@ -536,9 +522,6 @@ void vip_SoulGem_touch(entity this, entity toucher)
 	if(toucher.vip_held)
 		return;
 
-	if(STAT(FROZEN, toucher))
-		return;
-
 	if(!allowed_to_spawn)
 		return;
 
@@ -739,8 +722,11 @@ void HUD_Mod_VIP_Reset(void)
 {
 	redvip_prevstatus = bluevip_prevstatus = yellowvip_prevstatus = pinkvip_prevstatus = redvip_prevframe = bluevip_prevframe = yellowvip_prevframe = pinkvip_prevframe = redvip_statuschange_time = bluevip_statuschange_time = yellowvip_statuschange_time = pinkvip_statuschange_time = 0;
 }
-void HUD_Mod_VIP(vector pos, vector mySize)
+void HUD_Mod_VIP(vector pos, vector mySize, bool should_draw)
 {
+	if (!should_draw)
+		return;
+	
 	vector redvip_pos, bluevip_pos, yellowvip_pos, pinkvip_pos;
 	vector vip_size;
 	vector e1, e2;

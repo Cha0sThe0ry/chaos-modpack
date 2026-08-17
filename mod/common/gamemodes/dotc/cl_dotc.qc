@@ -78,8 +78,11 @@ void DrawDotCItem(vector myPos, vector mySize, float aspect_ratio, int i)
 	}
 }
 
-void HUD_Mod_DotC(vector myPos, vector mySize)
+void HUD_Mod_DotC(vector myPos, vector mySize, bool should_draw)
 {
+	if (!should_draw)
+		return;
+	
 	mod_active = 1; // required in each mod function that always shows something
 
 	int rows, columns;

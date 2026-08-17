@@ -1,9 +1,9 @@
 #ifdef SVQC
-	AUTOCVAR_NOREF(g_dotc, bool, false, "");
+	AUTOCVAR_NOREF(g_dotc, bool, false, "Defence of the Core");
 #endif
 
 #ifdef CSQC
-void HUD_Mod_DotC(vector pos, vector mySize);
+void HUD_Mod_DotC(vector pos, vector mySize, bool should_draw);
 #endif
 CLASS(DoTC, Gametype)
     INIT(DoTC)
@@ -20,7 +20,7 @@ CLASS(DoTC, Gametype)
         return true;
     }
 #ifdef CSQC
-    ATTRIB(DoTC, m_modicons, void(vector pos, vector mySize), HUD_Mod_DotC);
+    ATTRIB(DoTC, m_modicons, void(vector pos, vector mySize, bool should_draw), HUD_Mod_DotC);
 #endif
 ENDCLASS(DoTC)
 REGISTER_GAMETYPE(DOTC, NEW(DoTC));

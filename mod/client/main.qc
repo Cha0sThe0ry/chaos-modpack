@@ -1,33 +1,9 @@
 #include "oregon.qh"
+#include "particles.qh"
 
 STATIC_INIT(mod_cvars)
 {
 	localcmd("set hud_panel_minigamemenu 1\n");
-}
-
-string mod_scoreboard_getname(entity pl)
-{
-	string pname = entcs_GetName(pl.sv_entnum);
-	string dcname = strtolower(strdecolorize(pname));
-
-	if(ready_waiting && pl.ready)
-		sbt_field_icon0 = "gfx/scoreboard/player_ready";
-	else if(strstrofs(dcname, "antibody", 0) >= 0)
-	{
-		int f = entcs_GetClientColors(pl.sv_entnum);
-		sbt_field_icon0 = "gfx/menu/luma/icon_mod_newtoys";
-		sbt_field_icon0_rgb = colormapPaletteColor(f % 16, 1);
-	}
-	else if(!teamplay)
-	{
-		int f = entcs_GetClientColors(pl.sv_entnum);
-		sbt_field_icon0 = "gfx/scoreboard/playercolor_base";
-		sbt_field_icon1 = "gfx/scoreboard/playercolor_shirt";
-		sbt_field_icon1_rgb = colormapPaletteColor(floor(f / 16), 0);
-		sbt_field_icon2 = "gfx/scoreboard/playercolor_pants";
-		sbt_field_icon2_rgb = colormapPaletteColor(f % 16, 1);
-	}
-	return pname;
 }
 
 STATIC_INIT_LATE(mod_cvars_override)
@@ -41,10 +17,15 @@ STATIC_INIT_LATE(mod_cvars_override)
 	localcmd("\nalias placeitems \"cl_cmd placeitems ${* ?}\"\n");
 	localcmd("\nalias propedit \"cl_cmd propedit ${* ?}\"\n");
 	localcmd("\nalias oregon \"cl_cmd oregon ${* ?}\"\n");
+	localcmd("\nalias particle \"cl_cmd particle ${* ?}\n");
 
 	localcmd("\nalias findmap \"cmd findmap ${* ?}\"\n");
 
 	localcmd("\nalias snap \"cmd snap ${* ?}\"\n");
+
+	// fork uses this effect already
+	//EFFECT_BLASTER_IMPACT.eent_eff_name = "electro_ballexplode";
+	EFFECT_BLASTER_MUZZLEFLASH.eent_eff_name = "electro_muzzleflash";
 }
 
 REGISTER_MUTATOR(mutator_mod, true);
@@ -82,7 +63,7 @@ MUTATOR_HOOKFUNCTION(mutator_mod, CSQC_ConsoleCommand)
 		LOG_INFO("Buffs:");
 		FOREACH(StatusEffects, it.instanceOfBuff,
 		{
-			LOG_INFO("    ", it.netname, " (", BUFF_NAME(it.m_id), "^7)");
+			LOG_INFO("    ", it.netname, " (", it.m_name, "^7)");
 		});
 		return true;
 	}
@@ -103,5 +84,30 @@ MUTATOR_HOOKFUNCTION(mutator_mod, CSQC_ConsoleCommand)
 	{
 		Oregon_HandleCommand(argv(1));
 		return true;
+	}
+
+	if(cmd_name == "particle")
+	{
+		Particle_HandleCommand(M_ARGV(1, int));
+		return true;
+	}
+}
+
+bool autocvar_cl_rumraisin;
+vector wcross_prevorigin;
+float wcross_lastcheck;
+MUTATOR_HOOKFUNCTION(mutator_mod, UpdateCrosshair)
+{
+	if(autocvar_cl_rumraisin)
+	{
+		if(time >= wcross_lastcheck)
+		{
+			wcross_origin = project_3d_to_2d(view_origin + max_shot_distance * view_forward) + (randomvec() * (10000 * drawframetime));
+			wcross_origin.z = 0;
+			wcross_prevorigin = wcross_origin;
+			wcross_lastcheck = time + 0.04; // delay a bit so it's not choppy
+		}
+		else
+			wcross_origin = wcross_prevorigin;
 	}
 }

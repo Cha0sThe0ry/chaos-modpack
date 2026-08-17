@@ -143,6 +143,11 @@ void cq_ControlPoint_SwitchTeam(entity this, int newteam, int newstatus, bool sh
 	this.SendFlags |= CQSF_STATE | CQSF_TEAM;
 }
 
+bool cq_ControlPoint_Think_cond(entity e)
+{
+	return (IS_PLAYER(e) && !IS_DEAD(e) && (!e.vehicle || autocvar_g_conquest_capture_vehicle));
+}
+
 int cq_found_players[17];
 void cq_ControlPoint_Think(entity this)
 {
@@ -156,20 +161,16 @@ void cq_ControlPoint_Think(entity this)
 	for(int j = 0; j < 17; ++j)
 		cq_found_players[j] = 0;
 
-	entity head = WarpZone_FindRadius(this.origin, this.target_range, true);
-	while(head)
+	WarpZone_SearchInRadius_otherent = this;
+	for (entity head = WarpZone_SearchInRadius(this.origin, this.target_range, MOVE_NOTHING, cq_ControlPoint_Think_cond); head; head = head.chain)
 	{
-		if(IS_PLAYER(head) && !STAT(FROZEN, head) && !IS_DEAD(head) && (!head.vehicle || autocvar_g_conquest_capture_vehicle))
+		if(SAME_TEAM(head, this))
+			++found_teammates;
+		else
 		{
-			if(SAME_TEAM(head, this))
-				++found_teammates;
-			else
-			{
-				cq_found_players[head.team] += 1;
-				++found_enemies;
-			}
+			cq_found_players[head.team] += 1;
+			++found_enemies;
 		}
-		head = head.chain;
 	}
 
 	// nasty hack to check if there's a stalemate (too many enemy teams to capture)
