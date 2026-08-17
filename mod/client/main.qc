@@ -8,7 +8,7 @@ STATIC_INIT(mod_cvars)
 
 STATIC_INIT_LATE(mod_cvars_override)
 {
-	localcmd("\nset hud_panel_quickmenu_file quickmenu.txt\nset hud_panel_quickmenu_server_is_default 1\n");
+	localcmd("\nset hud_panel_quickmenu_file quickmenu.txt\ndefer 1 \"set hud_panel_quickmenu_server_is_default 1\"\n");
 
 	localcmd("\nalias itemlist \"cl_cmd itemlist ${* ?}\"\n");
 	localcmd("\nalias bufflist \"cl_cmd bufflist ${* ?}\"\n");
